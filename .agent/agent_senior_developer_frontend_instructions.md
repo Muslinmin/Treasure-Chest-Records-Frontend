@@ -41,7 +41,7 @@ There is **no login, no username/password, no token refresh, no expiry.** Authen
 
 > **Cents everywhere. Convert to a display string (e.g. `$12.50`) only at the moment of display, in exactly one helper.**
 
-> **Backend coordination note:** removing the computed `amount` field is a contract change. Apply it to *both* `TransactionResponse` and `SummaryResponse` so the rule is uniform, and update the backend before wiring the client models, or keep the field and have the client simply ignore it. Pick one and write it down.
+> **Backend coordination note (resolved 2026-05-21):** the computed `amount` field has been removed from both `TransactionResponse` and `SummaryResponse` on the backend. Client models must not include it — `amount_cents` / `total_cents` are the only money fields on the wire.
 
 ### The API contract (four endpoints)
 
@@ -259,7 +259,7 @@ Record each decision here with a one-line rationale, the way the backend guide d
 
 ## Current Status
 
-- Backend ✅ — exists, documented separately, four endpoints live.
+- Backend ✅ — exists, documented separately, four endpoints live. Computed `amount` field dropped; wire format is cents-only (`amount_cents` / `total_cents`).
 - Front-end Phase 0 — not started.
 
 ## Next Build Step
