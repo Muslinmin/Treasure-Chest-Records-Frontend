@@ -210,25 +210,37 @@ mkdir -p lib/{domain,data/api,data/repositories,state,ui}
 
 **Outputs:** rendered screens, and user actions sent back up to the providers.
 
-**Foreseeable screens** (exact layout is a product decision — design them with the junior dev when you arrive here):
-- **Key setup screen** — paste the API key once; stored to secure storage. Also the screen the app returns to on a `401`.
-- **Transactions list** — paged/filterable list; each row shows the domain-formatted amount, vendor, date, category (with a visible "uncategorised" state for `null`).
-- **Transaction detail** — the full record for one transaction.
-- **Dashboard / summary** — current-month summary and the 12-month view from `/summary/monthly`; this is where charts live if wanted.
-- **Sync / ingest trigger** — a control that calls `POST /ingest` and surfaces the per-file report.
+**The screens (decided by the product owner — there are exactly three).** This is no longer open. The app has three pages and no others; resist the urge to add a fourth (e.g. a transaction-detail screen) — the table below intentionally absorbs that role.
 
-**Checkpoint questions:** Show me where a widget formats money — does it call the domain helper or do the division itself? On launch with no stored key, what does the user see?
+1. **Key setup** — the first page on a fresh install. The user pastes the API key once; it is written to secure storage. After that it is **never seen again** in normal use — the *only* way back to it is a `401`/`403`, which the auth-status provider (Phase 4) detects and routes here. Treat it as a one-time gate, not a tab.
+
+2. **Dashboard** — the home screen, and the screen the app opens to once a key exists. It answers the product owner's two confirmed needs, both driven by the summary endpoints:
+   - **Spending over time** — the 12-month trend from `/summary/monthly`; total by default, narrowable to a single category.
+   - **Category comparison for a month** — every category's total for one selected whole month, from `/summary` (period is **whole months only** — see Phase 6).
+   - **Sync button, top-right.** A single control that calls `POST /ingest`. It must show three visible states — idle, working (spinner, disabled to block double-taps), done — because ingest is a server-side batch and not instant. The per-file report is surfaced as a transient toast/snackbar (e.g. "Synced — 42 new"), with the full breakdown available on tap (dialog or bottom sheet). **After a successful sync the Dashboard must refetch itself** so the numbers reflect the new data immediately; this is the same refetch path as on-focus, just triggered explicitly. A `401` here routes to Key setup like any other call — no special casing.
+
+3. **Transactions** — a single **scrollable table** (a spreadsheet-style grid) showing the raw ledger. The user scrolls **both axes** — vertically through rows, horizontally through columns — so every field is reachable without a separate detail screen. Columns are the domain-formatted amount plus vendor, date, category (with a visible "uncategorised" state for `null` — never a blank), and the remaining fields the old detail screen would have shown. Data is paged from `/transactions` (mind `retrieve_limit`/`offset`); load the next page as the user nears the bottom.
+
+**Checkpoint questions:** Show me where a widget formats money — does it call the domain helper or do the division itself? On launch with no stored key, what does the user see? When the user taps Sync, what are the three button states, and what happens to the Dashboard's numbers once it succeeds?
 
 ---
 
-### Phase 6 — Open Decisions (decide as the product owner)
+### Phase 6 — Decisions Log
 
+**Resolved (treat as settled):**
+- **Page count — three, full stop.** Key setup, Dashboard, Transactions. *Why:* single-user app; the table absorbs the detail view, and Sync is an action not a destination. Do not add screens without a product-owner decision recorded here.
+- **Summary period — whole calendar months only.** *Why:* the `/summary` and `/summary/monthly` buckets are monthly; constraining "period" to whole months means both Dashboard needs are served by the existing endpoints with zero backend change. Arbitrary date-range breakdowns are explicitly out of scope for v1.
+- **Sync is a Dashboard action (top-right button), not a screen.** Ingest report shown as a toast with full detail on tap; the Dashboard auto-refetches after a successful sync. *Why:* the action belongs on the screen whose data it refreshes.
+- **Transactions is a two-axis scrollable table, not a list + detail.** *Why:* horizontal scroll exposes every field, removing the need for a fourth screen.
+
+**Still open:**
 - **Offline cache** — deferred from Phase 3; add only when felt.
 - **Refetch policy** — on load and on focus is the backend's stated model; confirm it feels right.
 - **Theming / light-dark** — a UI decision, not an architecture one.
-- **Charting library** — pick when the dashboard is built, not before.
+- **Charting library** — pick when the Dashboard trend/comparison views are built, not before.
+- **Budget profile (future)** — comparison logic would live in the domain layer next to `Money`; the open sub-decision is whether budget targets are device-local or server-backed (the latter means new backend endpoints). Not in v1.
 
-Record each decision here with a one-line rationale, the way the backend guide does.
+Record each new decision here with a one-line rationale, the way the backend guide does.
 
 ---
 
