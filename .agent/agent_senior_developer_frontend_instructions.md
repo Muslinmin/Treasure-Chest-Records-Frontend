@@ -272,8 +272,19 @@ Record each new decision here with a one-line rationale, the way the backend gui
 ## Current Status
 
 - Backend ✅ — exists, documented separately, four endpoints live. Computed `amount` field dropped; wire format is cents-only (`amount_cents` / `total_cents`).
-- Front-end Phase 0 — not started.
+- Front-end Phase 0 ✅ — complete (2026-05-26).
+  - Flutter 3.44.0 on Ubuntu 26.04, Android emulator target.
+  - Packages installed: `dio ^5.7.0`, `flutter_riverpod ^2.6.1`, `flutter_secure_storage ^9.2.2`, `intl ^0.19.0`, `freezed_annotation ^2.4.4`, `json_annotation ^4.9.0`; dev: `build_runner`, `freezed`, `json_serializable`.
+  - Layered folder structure committed: `lib/{domain,data/api,data/repositories,state,ui}`.
+  - `.gitignore` covers build artifacts and secrets (`.env`, `secrets.dart`, etc.).
+  - App confirmed running on Android device.
+- Front-end Phase 1 — not started.
 
 ## Next Build Step
 
-Confirm the money contract with the backend (cents-only, drop the computed `amount`), then run Phase 0: scaffold the Flutter project, install the dependency stack, and commit the empty layered folder structure. Once it launches on both platforms, begin Phase 1 (the domain layer) — starting, as always, with a commented skeleton the junior developer fills in.
+Begin Phase 1 (Domain Layer). Junior developer reads `intl` and `freezed` docs first, then writes:
+- `lib/domain/entities/transaction.dart` — `Transaction` entity (freezed, `amountCents` as int).
+- `lib/domain/entities/summary.dart` — `Summary` entity (freezed, `totalCents` as int).
+- `lib/domain/money.dart` — single `formatCents(int cents)` helper using `NumberFormat.currency`; the only place `÷100` happens in the entire app.
+
+Start with a commented skeleton, junior developer fills in the body. Run `dart run build_runner build` after freezed classes are written to generate the `.freezed.dart` and `.g.dart` files. Unit-test the formatter before advancing to Phase 2.
