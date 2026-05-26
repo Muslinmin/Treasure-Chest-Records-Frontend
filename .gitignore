@@ -49,3 +49,4 @@ app.*.map.json
 .env.*
 *.secret
 secrets.dart
+config.json

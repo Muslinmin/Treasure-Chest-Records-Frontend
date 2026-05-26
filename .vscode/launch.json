@@ -1,0 +1,10 @@
+{
+  "configurations": [
+    {
+      "name": "Flutter (local)",
+      "request": "launch",
+      "type": "dart",
+      "args": ["--dart-define-from-file=config.json"]
+    }
+  ]
+}
