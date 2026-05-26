@@ -5,10 +5,10 @@ part 'transaction_response.freezed.dart';
 part 'transaction_response.g.dart';
 
 @freezed
-@JsonSerializable(fieldRename: FieldRename.snake, createToJson: false)
 class TransactionResponse with _$TransactionResponse {
   const TransactionResponse._();
 
+  @JsonSerializable(fieldRename: FieldRename.snake, createToJson: false)
   const factory TransactionResponse({
     required int id,
     required String transactionDate,

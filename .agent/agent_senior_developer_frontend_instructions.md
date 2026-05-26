@@ -278,13 +278,31 @@ Record each new decision here with a one-line rationale, the way the backend gui
   - Layered folder structure committed: `lib/{domain,data/api,data/repositories,state,ui}`.
   - `.gitignore` covers build artifacts and secrets (`.env`, `secrets.dart`, etc.).
   - App confirmed running on Android device.
-- Front-end Phase 1 — not started.
+- Front-end Phase 1 ✅ — complete (2026-05-26).
+  - `lib/domain/entities/transaction.dart` — freezed entity, all 10 API fields, `amountCents` as int.
+  - `lib/domain/entities/summary.dart` — freezed entity, all 5 API fields, `totalCents` as int.
+  - `lib/domain/money.dart` — `formatCents(int cents)` using `NumberFormat.currency(locale: 'en_SG', symbol: 'SGD ')`. Only place `÷100` happens.
+  - Unit tests passing: `formatCents(1250)` → `'SGD 12.50'`, `formatCents(0)` → `'SGD 0.00'`, `formatCents(99)` → `'SGD 0.99'`.
+  - `main.dart` replaced with minimal placeholder (removed Dart 3.12 dot-shorthand syntax that blocked build_runner).
+- Front-end Phase 2 ✅ — complete (2026-05-26).
+  - `lib/data/api/exceptions.dart` — `UnauthorizedException` with default message and `toString`.
+  - `lib/data/api/auth_interceptor.dart` — attaches `Authorization: Bearer <key>` on every request; converts `401`/`403` to `UnauthorizedException`; no retry logic.
+  - `lib/data/api/api_client.dart` — dio configured with `baseUrl` from `--dart-define-from-file=config.json`, 10s connect / 30s receive timeouts; four endpoint methods (`ingest`, `getTransactions`, `getSummary`, `getSummaryMonthly`).
+  - `lib/data/api/models/transaction_response.dart` and `summary_response.dart` — freezed + json_serializable DTOs with `fieldRename: FieldRename.snake` (annotation on factory constructor, not class — required for freezed 2.x to apply rename to impl's fromJson), `createToJson: false`, and `toDomain()` mapping to domain entities.
+  - `config.json` (gitignored) holds `BASE_URL` (Tailscale IP `100.82.222.12:8000`). `.vscode/launch.json` passes `--dart-define-from-file=config.json` automatically.
+  - build_runner generates clean output (version warning only — harmless, from build tools predating Dart 3.12).
+  - **Known false-positive IDE warning:** `@JsonSerializable` on factory constructors triggers "can only be used on classes" from the Dart analyser — ignore it; freezed reads it there intentionally and the generated output is correct.
+- Front-end Phase 3 ✅ — complete (2026-05-26).
+  - `lib/data/repositories/transaction_repository.dart` — injects `ApiClient`, wraps `getTransactions`, maps DTOs via `toDomain()`, default `limit=50`/`offset=0` as Dart parameter defaults.
+  - `lib/data/repositories/summary_repository.dart` — injects `ApiClient`, two methods: `getSummary({String? period})` and `getSummaryMonthly()`, both map via `toDomain()`. No DTOs cross this boundary outward.
+- Front-end Phase 4 — not started.
 
 ## Next Build Step
 
-Begin Phase 1 (Domain Layer). Junior developer reads `intl` and `freezed` docs first, then writes:
-- `lib/domain/entities/transaction.dart` — `Transaction` entity (freezed, `amountCents` as int).
-- `lib/domain/entities/summary.dart` — `Summary` entity (freezed, `totalCents` as int).
-- `lib/domain/money.dart` — single `formatCents(int cents)` helper using `NumberFormat.currency`; the only place `÷100` happens in the entire app.
+Begin Phase 4 (State Management / Riverpod). Read first:
+- Riverpod intro: https://riverpod.dev/docs/introduction/why_riverpod — providers, `ref.watch`
+- Async providers: https://riverpod.dev/docs/essentials/first_request — `AsyncNotifier`, loading/error states
 
-Start with a commented skeleton, junior developer fills in the body. Run `dart run build_runner build` after freezed classes are written to generate the `.freezed.dart` and `.g.dart` files. Unit-test the formatter before advancing to Phase 2.
+Write:
+- Providers exposing `List<Transaction>` (with filter + pagination state) and `List<Summary>` / monthly summary data — backed by the repository layer.
+- An auth-status provider that flips to "needs key" when `UnauthorizedException` is thrown, so the UI can route to the Key setup screen.

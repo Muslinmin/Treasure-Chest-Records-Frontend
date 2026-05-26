@@ -5,10 +5,10 @@ part 'summary_response.freezed.dart';
 part 'summary_response.g.dart';
 
 @freezed
-@JsonSerializable(fieldRename: FieldRename.snake, createToJson: false)
 class SummaryResponse with _$SummaryResponse {
   const SummaryResponse._();
 
+  @JsonSerializable(fieldRename: FieldRename.snake, createToJson: false)
   const factory SummaryResponse({
     required String period,
     required String category,

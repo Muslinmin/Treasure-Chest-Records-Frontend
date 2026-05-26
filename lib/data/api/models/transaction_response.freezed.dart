@@ -233,7 +233,8 @@ class __$$TransactionResponseImplCopyWithImpl<$Res>
 }
 
 /// @nodoc
-@JsonSerializable()
+
+@JsonSerializable(fieldRename: FieldRename.snake, createToJson: false)
 class _$TransactionResponseImpl extends _TransactionResponse {
   const _$TransactionResponseImpl({
     required this.id,
