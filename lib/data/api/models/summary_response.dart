@@ -8,7 +8,8 @@ part 'summary_response.g.dart';
 class SummaryResponse with _$SummaryResponse {
   const SummaryResponse._();
 
-  @JsonSerializable(fieldRename: FieldRename.snake, createToJson: false)
+  // Response-only model; createToJson must stay enabled so freezed's generated toJson() delegation compiles.
+  @JsonSerializable(fieldRename: FieldRename.snake)
   const factory SummaryResponse({
     required String period,
     required String category,

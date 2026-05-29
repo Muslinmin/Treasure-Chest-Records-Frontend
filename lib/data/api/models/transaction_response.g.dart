@@ -20,3 +20,18 @@ _$TransactionResponseImpl _$$TransactionResponseImplFromJson(
   category: json['category'] as String?,
   sourceFile: json['source_file'] as String?,
 );
+
+Map<String, dynamic> _$$TransactionResponseImplToJson(
+  _$TransactionResponseImpl instance,
+) => <String, dynamic>{
+  'id': instance.id,
+  'transaction_date': instance.transactionDate,
+  'amount_cents': instance.amountCents,
+  'is_settled': instance.isSettled,
+  'is_category_manual': instance.isCategoryManual,
+  'description': instance.description,
+  'transaction_code': instance.transactionCode,
+  'vendor_name': instance.vendorName,
+  'category': instance.category,
+  'source_file': instance.sourceFile,
+};

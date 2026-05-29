@@ -295,14 +295,19 @@ Record each new decision here with a one-line rationale, the way the backend gui
 - Front-end Phase 3 ✅ — complete (2026-05-26).
   - `lib/data/repositories/transaction_repository.dart` — injects `ApiClient`, wraps `getTransactions`, maps DTOs via `toDomain()`, default `limit=50`/`offset=0` as Dart parameter defaults.
   - `lib/data/repositories/summary_repository.dart` — injects `ApiClient`, two methods: `getSummary({String? period})` and `getSummaryMonthly()`, both map via `toDomain()`. No DTOs cross this boundary outward.
-- Front-end Phase 4 — not started.
+- Front-end Phase 4 ✅ — complete (2026-05-29).
+  - `lib/state/auth_status.dart` — `AuthStatus` enum (`authorized`/`unauthorized`), `authStatusProvider` (`StateProvider`, defaults to `authorized`), `handleUnauthorizedException(Ref ref)` helper that flips the provider to `unauthorized`.
+  - `lib/state/providers.dart` — infrastructure providers: `secureStorageProvider`, `apiClientProvider`, `transactionRepoProvider`, `summaryRepoProvider`.
+  - `lib/state/summary_notifier.dart` — `SummaryNotifier` (`AsyncNotifier<List<Summary>>`): holds `_period`, `build()` fetches via `summaryRepoProvider`, `setPeriod(String?)` updates `_period`, sets `AsyncLoading`, then re-fetches. `SummaryMonthlyNotifier` (`AsyncNotifier<List<Summary>>`): `build()` fetches `getSummaryMonthly()`. Both notifiers wrap every API call in try/catch `on UnauthorizedException` → `handleUnauthorizedException(ref)` + `rethrow`. **Note:** `ref.listenSelf` (deprecated) was replaced with direct try/catch at each call site.
+  - `lib/state/transactions_notifier.dart` — `TransactionsNotifier` (`AsyncNotifier<List<Transaction>>`): pagination via `_offset`/`_hasMore`/`_limit=50`, filter fields `_dateFrom`/`_dateTo`/`_category`. Three methods: `build()` (initial load, resets all state), `setFilters()` (resets pagination, sets `AsyncLoading`, re-fetches), `fetchNextPage()` (appends next page to existing list, guards with `_hasMore`). All three wrap repo calls in try/catch `on UnauthorizedException` → `handleUnauthorizedException(ref)` + `rethrow` inside the `AsyncValue.guard` closure.
+- Front-end Phase 5 — not started.
 
 ## Next Build Step
 
-Begin Phase 4 (State Management / Riverpod). Read first:
-- Riverpod intro: https://riverpod.dev/docs/introduction/why_riverpod — providers, `ref.watch`
-- Async providers: https://riverpod.dev/docs/essentials/first_request — `AsyncNotifier`, loading/error states
+Begin Phase 5 (UI Layer). Three screens: Key Setup, Dashboard, Transactions. Build in this order:
 
-Write:
-- Providers exposing `List<Transaction>` (with filter + pagination state) and `List<Summary>` / monthly summary data — backed by the repository layer.
-- An auth-status provider that flips to "needs key" when `UnauthorizedException` is thrown, so the UI can route to the Key setup screen.
+1. **Key Setup screen** — first since it gates everything else. Text field for the API key, writes to `flutter_secure_storage` on confirm. On success, flip `authStatusProvider` back to `authorized`. This screen also appears whenever `authStatusProvider` is `unauthorized`.
+
+2. **Dashboard screen** — home screen once a key exists. Two views driven by `summaryProvider` and `summaryMonthlyProvider`: spending-over-time chart (12 months) and category comparison for a selected month. Sync button (top-right): calls `POST /ingest`, shows idle/working/done states, displays per-file report as a snackbar, refetches Dashboard on success.
+
+3. **Transactions screen** — two-axis scrollable table. Columns: date, amount (formatted via `formatCents`), vendor, category (show "Uncategorised" for `null` — never blank), settled status, source file. Infinite scroll: call `transactionsProvider.fetchNextPage()` as user nears the bottom.

@@ -8,7 +8,8 @@ part 'transaction_response.g.dart';
 class TransactionResponse with _$TransactionResponse {
   const TransactionResponse._();
 
-  @JsonSerializable(fieldRename: FieldRename.snake, createToJson: false)
+  // Response-only model; createToJson must stay enabled so freezed's generated toJson() delegation compiles.
+  @JsonSerializable(fieldRename: FieldRename.snake)
   const factory TransactionResponse({
     required int id,
     required String transactionDate,

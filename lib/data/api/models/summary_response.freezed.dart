@@ -169,7 +169,7 @@ class __$$SummaryResponseImplCopyWithImpl<$Res>
 
 /// @nodoc
 
-@JsonSerializable(fieldRename: FieldRename.snake, createToJson: false)
+@JsonSerializable(fieldRename: FieldRename.snake)
 class _$SummaryResponseImpl extends _SummaryResponse {
   const _$SummaryResponseImpl({
     required this.period,
