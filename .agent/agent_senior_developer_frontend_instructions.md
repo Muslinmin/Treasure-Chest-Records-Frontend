@@ -300,14 +300,22 @@ Record each new decision here with a one-line rationale, the way the backend gui
   - `lib/state/providers.dart` — infrastructure providers: `secureStorageProvider`, `apiClientProvider`, `transactionRepoProvider`, `summaryRepoProvider`.
   - `lib/state/summary_notifier.dart` — `SummaryNotifier` (`AsyncNotifier<List<Summary>>`): holds `_period`, `build()` fetches via `summaryRepoProvider`, `setPeriod(String?)` updates `_period`, sets `AsyncLoading`, then re-fetches. `SummaryMonthlyNotifier` (`AsyncNotifier<List<Summary>>`): `build()` fetches `getSummaryMonthly()`. Both notifiers wrap every API call in try/catch `on UnauthorizedException` → `handleUnauthorizedException(ref)` + `rethrow`. **Note:** `ref.listenSelf` (deprecated) was replaced with direct try/catch at each call site.
   - `lib/state/transactions_notifier.dart` — `TransactionsNotifier` (`AsyncNotifier<List<Transaction>>`): pagination via `_offset`/`_hasMore`/`_limit=50`, filter fields `_dateFrom`/`_dateTo`/`_category`. Three methods: `build()` (initial load, resets all state), `setFilters()` (resets pagination, sets `AsyncLoading`, re-fetches), `fetchNextPage()` (appends next page to existing list, guards with `_hasMore`). All three wrap repo calls in try/catch `on UnauthorizedException` → `handleUnauthorizedException(ref)` + `rethrow` inside the `AsyncValue.guard` closure.
-- Front-end Phase 5 — not started.
+- Front-end Phase 5 ✅ — complete (2026-05-29).
+  - `lib/ui/key_setup_screen.dart` — `ConsumerStatefulWidget`; `TextEditingController` for key input; writes to `secureStorageProvider` with key `'api_key'`; flips `authStatusProvider` to `authorized` on save.
+  - `lib/ui/dashboard_screen.dart` — `ConsumerWidget`; watches `summaryMonthlyProvider` and `summaryProvider`; both rendered via `.when()`; `formatCents()` used for all money display (no `÷100` in widgets). `SyncButton` extracted as `ConsumerStatefulWidget`; `_isSyncing` bool drives three states (idle icon / spinner / reverts to idle); `ref.invalidate()` on both summary providers after successful sync; `UnauthorizedException` inlined as `ref.read(authStatusProvider.notifier).state = AuthStatus.unauthorized` (cannot use `handleUnauthorizedException` helper — `WidgetRef` ≠ `Ref`).
+  - `lib/ui/transactions_screen.dart` — `ConsumerStatefulWidget`; `ScrollController` listener fires `fetchNextPage()` when within 200px of bottom; nested `SingleChildScrollView` (horizontal outer, vertical inner with controller); `DataTable` with columns: Date (`DateFormat('yyyy-MM-dd')`), Amount (`formatCents`), Vendor (`?? 'Unknown'`), Category (`?? 'Uncategorised'`), Settled (icon), Source (`?? 'Direct Entry'`).
+  - `lib/ui/authenticated_shell.dart` — `ConsumerStatefulWidget`; holds `_selectedIndex` int; `IndexedStack` keeps both screens mounted (preserves scroll state on tab switch); `BottomNavigationBar` with Dashboard and Transactions tabs.
+  - `lib/main.dart` — `ConsumerStatefulWidget`; `initState` calls `_checkStoredKey()` (reads `'api_key'` from secure storage); `authStatusProvider` defaults to `AuthStatus.unknown`; `switch` routes: unknown → spinner, authorized → `AuthenticatedShell`, unauthorized → `KeySetupScreen`.
+  - `lib/state/auth_status.dart` — `AuthStatus` enum updated to include `unknown` (default), `authorized`, `unauthorized`.
+  - `lib/data/api/api_client.dart` — `ingest()` return type corrected to `List<dynamic>` (backend returns an array of per-file reports, not a map).
+  - **Known lesson:** `handleUnauthorizedException(Ref ref)` cannot be called from widgets because `WidgetRef` (flutter_riverpod) and `Ref` (riverpod) are distinct types. In widgets, inline `ref.read(authStatusProvider.notifier).state = AuthStatus.unauthorized` directly.
 
 ## Next Build Step
 
-Begin Phase 5 (UI Layer). Three screens: Key Setup, Dashboard, Transactions. Build in this order:
+All five phases complete. The app is functional end-to-end. Remaining open decisions from Phase 6:
 
-1. **Key Setup screen** — first since it gates everything else. Text field for the API key, writes to `flutter_secure_storage` on confirm. On success, flip `authStatusProvider` back to `authorized`. This screen also appears whenever `authStatusProvider` is `unauthorized`.
-
-2. **Dashboard screen** — home screen once a key exists. Two views driven by `summaryProvider` and `summaryMonthlyProvider`: spending-over-time chart (12 months) and category comparison for a selected month. Sync button (top-right): calls `POST /ingest`, shows idle/working/done states, displays per-file report as a snackbar, refetches Dashboard on success.
-
-3. **Transactions screen** — two-axis scrollable table. Columns: date, amount (formatted via `formatCents`), vendor, category (show "Uncategorised" for `null` — never blank), settled status, source file. Infinite scroll: call `transactionsProvider.fetchNextPage()` as user nears the bottom.
+- **Charts** — Dashboard currently shows plain text lists. Pick a charting library and replace with visual trend/comparison charts.
+- **Offline cache** — deferred; add Drift/SQLite in the repository layer only when offline reads or instant-launch matter.
+- **Refetch on focus** — not yet implemented; add `WidgetsBindingObserver` to `AuthenticatedShell` to refetch on `AppLifecycleState.resumed`.
+- **Theming / light-dark** — UI decision, implement when desired.
+- **Filter UI** — `TransactionsNotifier.setFilters()` exists but no UI exposes it yet; add filter controls to the Transactions AppBar when needed.

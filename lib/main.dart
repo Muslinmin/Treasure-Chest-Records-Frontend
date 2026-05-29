@@ -4,6 +4,8 @@ import 'state/auth_status.dart';
 import 'ui/key_setup_screen.dart';
 import  'state/providers.dart';
 import 'ui/dashboard_screen.dart';
+import 'ui/authenticated_shell.dart';
+
 void main() {
   runApp(
     const ProviderScope(
@@ -49,7 +51,7 @@ class _TreasureChestAppState extends ConsumerState<TreasureChestApp> {
               child: CircularProgressIndicator(),
             ),
           ),
-        AuthStatus.authorized => const DashboardScreen(),
+        AuthStatus.authorized => const AuthenticatedShell(),
         AuthStatus.unauthorized => const KeySetupScreen(),
       },
     );
