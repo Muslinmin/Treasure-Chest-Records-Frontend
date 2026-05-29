@@ -24,10 +24,11 @@ class ApiClient {
   }
 
   // POST /ingest
-  Future<Map<String, dynamic>> ingest() async {
-      final response = await dio.post<Map<String, dynamic>>('/ingest');
-      return response.data ?? {};
+  Future<List<dynamic>> ingest() async {
+    final response = await dio.post<List<dynamic>>('/ingest');
+    return response.data ?? [];
   }
+
 
 
   // GET /transactions
