@@ -15,3 +15,8 @@ String formatCents(int cents) {
 
 
 }
+
+// For chart rendering only — returns a double, not a display string that is in hundreds and not in floating point.
+double centsToChartValue(int cents) {
+  return cents/100.0;
+}

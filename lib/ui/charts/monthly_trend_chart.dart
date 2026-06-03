@@ -176,9 +176,9 @@ class _MonthlyTrendChartState extends State<MonthlyTrendChart> {
                   getTooltipColor: (group) => Theme.of(context).colorScheme.surfaceContainerHighest,
                   getTooltipItem: (group, groupIndex, rod, rodIndex) {
                     if (group.x < 0 || group.x >= sortedPeriods.length) return null;
-                    
+
                     final periodLabel = sortedPeriods[group.x];
-                    final calculatedCents = (rod.toY * 100).toInt();
+                    final calculatedCents = _periodTotals[periodLabel] ?? 0;
 
                     return BarTooltipItem(
                       '$periodLabel\n',

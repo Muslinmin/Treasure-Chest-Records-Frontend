@@ -237,8 +237,10 @@ mkdir -p lib/{domain,data/api,data/repositories,state,ui}
 - **Offline cache** — deferred from Phase 3; add only when felt.
 - **Refetch policy** — on load and on focus is the backend's stated model; confirm it feels right.
 - **Theming / light-dark** — a UI decision, not an architecture one.
-- **Charting library** — pick when the Dashboard trend/comparison views are built, not before.
 - **Budget profile (future)** — comparison logic would live in the domain layer next to `Money`; the open sub-decision is whether budget targets are device-local or server-backed (the latter means new backend endpoints). Not in v1.
+
+**Newly resolved:**
+- **Charting library — `fl_chart` (2026-06-03).** *Why:* MIT license, community standard for Flutter charts, sufficient for bar charts on both dashboard sections. No commercial license concerns for a personal app.
 
 Record each new decision here with a one-line rationale, the way the backend guide does.
 
@@ -274,14 +276,14 @@ Record each new decision here with a one-line rationale, the way the backend gui
 - Backend ✅ — exists, documented separately, four endpoints live. Computed `amount` field dropped; wire format is cents-only (`amount_cents` / `total_cents`).
 - Front-end Phase 0 ✅ — complete (2026-05-26).
   - Flutter 3.44.0 on Ubuntu 26.04, Android emulator target.
-  - Packages installed: `dio ^5.7.0`, `flutter_riverpod ^2.6.1`, `flutter_secure_storage ^9.2.2`, `intl ^0.19.0`, `freezed_annotation ^2.4.4`, `json_annotation ^4.9.0`; dev: `build_runner`, `freezed`, `json_serializable`.
+  - Packages installed: `dio ^5.7.0`, `flutter_riverpod ^2.6.1`, `flutter_secure_storage ^9.2.2`, `intl ^0.19.0`, `freezed_annotation ^2.4.4`, `json_annotation ^4.9.0`, `fl_chart` (charting); dev: `build_runner`, `freezed`, `json_serializable`.
   - Layered folder structure committed: `lib/{domain,data/api,data/repositories,state,ui}`.
   - `.gitignore` covers build artifacts and secrets (`.env`, `secrets.dart`, etc.).
   - App confirmed running on Android device.
 - Front-end Phase 1 ✅ — complete (2026-05-26).
   - `lib/domain/entities/transaction.dart` — freezed entity, all 10 API fields, `amountCents` as int.
   - `lib/domain/entities/summary.dart` — freezed entity, all 5 API fields, `totalCents` as int.
-  - `lib/domain/money.dart` — `formatCents(int cents)` using `NumberFormat.currency(locale: 'en_SG', symbol: 'SGD ')`. Only place `÷100` happens.
+  - `lib/domain/money.dart` — `formatCents(int cents)` using `NumberFormat.currency(locale: 'en_SG', symbol: 'SGD ')`. Only place `÷100` happens. `centsToChartValue(int cents)` returns a `double` for chart Y-axis rendering — the only place chart-numeric division happens.
   - Unit tests passing: `formatCents(1250)` → `'SGD 12.50'`, `formatCents(0)` → `'SGD 0.00'`, `formatCents(99)` → `'SGD 0.99'`.
   - `main.dart` replaced with minimal placeholder (removed Dart 3.12 dot-shorthand syntax that blocked build_runner).
 - Front-end Phase 2 ✅ — complete (2026-05-26).
@@ -302,7 +304,9 @@ Record each new decision here with a one-line rationale, the way the backend gui
   - `lib/state/transactions_notifier.dart` — `TransactionsNotifier` (`AsyncNotifier<List<Transaction>>`): pagination via `_offset`/`_hasMore`/`_limit=50`, filter fields `_dateFrom`/`_dateTo`/`_category`. Three methods: `build()` (initial load, resets all state), `setFilters()` (resets pagination, sets `AsyncLoading`, re-fetches), `fetchNextPage()` (appends next page to existing list, guards with `_hasMore`). All three wrap repo calls in try/catch `on UnauthorizedException` → `handleUnauthorizedException(ref)` + `rethrow` inside the `AsyncValue.guard` closure.
 - Front-end Phase 5 ✅ — complete (2026-05-29).
   - `lib/ui/key_setup_screen.dart` — `ConsumerStatefulWidget`; `TextEditingController` for key input; writes to `secureStorageProvider` with key `'api_key'`; flips `authStatusProvider` to `authorized` on save.
-  - `lib/ui/dashboard_screen.dart` — `ConsumerWidget`; watches `summaryMonthlyProvider` and `summaryProvider`; both rendered via `.when()`; `formatCents()` used for all money display (no `÷100` in widgets). `SyncButton` extracted as `ConsumerStatefulWidget`; `_isSyncing` bool drives three states (idle icon / spinner / reverts to idle); `ref.invalidate()` on both summary providers after successful sync; `UnauthorizedException` inlined as `ref.read(authStatusProvider.notifier).state = AuthStatus.unauthorized` (cannot use `handleUnauthorizedException` helper — `WidgetRef` ≠ `Ref`).
+  - `lib/ui/dashboard_screen.dart` — Upgraded to `ConsumerStatefulWidget`; `_selectedPeriod` local state drives the category breakdown month picker; watches `summaryMonthlyProvider` and `summaryProvider`; both rendered via `.when()` with chart widgets (no `÷100` in widgets). Period dropdown extracts unique periods from `summaryMonthlyProvider` data, sorted chronologically, shown only once loaded. `SyncButton` extracted as `ConsumerStatefulWidget`; `_isSyncing` bool drives three states (idle icon / spinner / reverts to idle); `ref.invalidate()` on both summary providers after successful sync; `UnauthorizedException` inlined as `ref.read(authStatusProvider.notifier).state = AuthStatus.unauthorized` (cannot use `handleUnauthorizedException` helper — `WidgetRef` ≠ `Ref`).
+  - `lib/ui/charts/monthly_trend_chart.dart` — `StatefulWidget`; `_selectedCategory` drives category filter dropdown (null = all categories); `_periodTotals` getter folds summaries into `Map<String, int>` (period → totalCents), filtered or summed per selected category; `_buildBarGroups()` maps periods to `BarChartGroupData` using `centsToChartValue()`; abbreviated k-suffix left-axis labels; tooltip reads directly from `_periodTotals` (no float round-trip).
+  - `lib/ui/charts/category_breakdown_chart.dart` — `StatelessWidget`; `_sorted` getter copies and sorts summaries by `totalCents` descending; `_buildBarGroups(sorted, context)` receives sorted list and context (avoids double-sort and enables theme integration); rotated bottom-axis category labels using `Transform.rotate(angle: -pi/4)`; tooltip uses `formatCents(summary.totalCents)` directly.
   - `lib/ui/transactions_screen.dart` — `ConsumerStatefulWidget`; `ScrollController` listener fires `fetchNextPage()` when within 200px of bottom; nested `SingleChildScrollView` (horizontal outer, vertical inner with controller); `DataTable` with columns: Date (`DateFormat('yyyy-MM-dd')`), Amount (`formatCents`), Vendor (`?? 'Unknown'`), Category (`?? 'Uncategorised'`), Settled (icon), Source (`?? 'Direct Entry'`).
   - `lib/ui/authenticated_shell.dart` — `ConsumerStatefulWidget`; holds `_selectedIndex` int; `IndexedStack` keeps both screens mounted (preserves scroll state on tab switch); `BottomNavigationBar` with Dashboard and Transactions tabs.
   - `lib/main.dart` — `ConsumerStatefulWidget`; `initState` calls `_checkStoredKey()` (reads `'api_key'` from secure storage); `authStatusProvider` defaults to `AuthStatus.unknown`; `switch` routes: unknown → spinner, authorized → `AuthenticatedShell`, unauthorized → `KeySetupScreen`.
@@ -314,7 +318,6 @@ Record each new decision here with a one-line rationale, the way the backend gui
 
 All five phases complete. The app is functional end-to-end. Remaining open decisions from Phase 6:
 
-- **Charts** — Dashboard currently shows plain text lists. Pick a charting library and replace with visual trend/comparison charts.
 - **Offline cache** — deferred; add Drift/SQLite in the repository layer only when offline reads or instant-launch matter.
 - **Refetch on focus** — not yet implemented; add `WidgetsBindingObserver` to `AuthenticatedShell` to refetch on `AppLifecycleState.resumed`.
 - **Theming / light-dark** — UI decision, implement when desired.
